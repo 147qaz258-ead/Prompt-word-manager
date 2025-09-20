@@ -1,0 +1,531 @@
+/* PromptMaster Chrome Extension - Content Script Styles */
+
+/* 选择器容器 */
+.promptmaster-selector {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  max-height: 300px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  z-index: 999999;
+  backdrop-filter: blur(10px);
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .promptmaster-selector {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+}
+
+/* 结果列表 */
+.promptmaster-results {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 transparent;
+}
+
+.promptmaster-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.promptmaster-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.promptmaster-results::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 3px;
+}
+
+.promptmaster-results::-webkit-scrollbar-thumb:hover {
+  background-color: #a0aec0;
+}
+
+/* 结果项 */
+.promptmaster-result-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f7fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.promptmaster-result-item:last-child {
+  border-bottom: none;
+}
+
+.promptmaster-result-item:hover {
+  background-color: #f7fafc;
+}
+
+.promptmaster-result-item.selected {
+  background-color: #ebf8ff;
+  border-left: 3px solid #3182ce;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-item {
+    border-bottom-color: #4a5568;
+  }
+  
+  .promptmaster-result-item:hover {
+    background-color: #4a5568;
+  }
+  
+  .promptmaster-result-item.selected {
+    background-color: #2c5282;
+    border-left-color: #63b3ed;
+  }
+}
+
+/* 结果项头部 */
+.promptmaster-result-header {
+  margin-bottom: 6px;
+}
+
+/* 结果项标题 */
+.promptmaster-result-title {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 4px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-title {
+    color: #e2e8f0;
+  }
+}
+
+/* 结果项别名 */
+.promptmaster-result-alias {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: #718096;
+  background-color: #f7fafc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-alias {
+    color: #a0aec0;
+    background-color: #4a5568;
+    border-color: #718096;
+  }
+}
+
+/* 结果项小方块容器 */
+.promptmaster-result-blocks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 小方块基础样式 */
+.promptmaster-block {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 标题块 */
+.promptmaster-block-title {
+  background-color: #e6f3ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  font-weight: 600;
+}
+
+/* 别名块 */
+.promptmaster-block-alias {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* 分类块 */
+.promptmaster-block-category {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #86efac;
+}
+
+/* 标签块 */
+.promptmaster-block-tag {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .promptmaster-block-title {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+    border-color: #3b82f6;
+  }
+  
+  .promptmaster-block-alias {
+    background-color: #0c4a6e;
+    color: #7dd3fc;
+    border-color: #0ea5e9;
+  }
+  
+  .promptmaster-block-category {
+    background-color: #064e3b;
+    color: #86efac;
+    border-color: #10b981;
+  }
+  
+  .promptmaster-block-tag {
+    background-color: #92400e;
+    color: #fcd34d;
+    border-color: #f59e0b;
+  }
+}
+
+/* 使用次数容器 */
+.promptmaster-result-usage {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+/* 结果项元信息（保留用于兼容） */
+.promptmaster-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #718096;
+}
+
+/* 结果项预览 */
+.promptmaster-result-preview {
+  font-size: 12px;
+  color: #718096;
+  line-height: 1.4;
+  margin-top: 8px;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* 预览内容 */
+.promptmaster-preview-content {
+  color: #2d3748;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 预览描述 */
+.promptmaster-preview-description {
+  color: #718096;
+  font-style: italic;
+  font-size: 11px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+}
+
+/* 展开状态的结果项 */
+.promptmaster-result-item.expanded {
+  background-color: #f8fafc;
+  border-left: 3px solid #3182ce;
+}
+
+/* 滑动动画 */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-preview {
+    color: #a0aec0;
+    background-color: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  .promptmaster-preview-content {
+    color: #e2e8f0;
+  }
+  
+  .promptmaster-preview-description {
+    color: #a0aec0;
+    border-top-color: #4a5568;
+  }
+  
+  .promptmaster-result-item.expanded {
+    background-color: #2d3748;
+    border-left-color: #63b3ed;
+  }
+}
+
+/* 使用次数 */
+.promptmaster-usage-count {
+  font-size: 11px;
+  color: #a0aec0;
+  margin-left: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-usage-count {
+    color: #718096;
+  }
+}
+
+/* 分类标签 */
+.promptmaster-result-category {
+  background-color: #e6fffa;
+  color: #234e52;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-category {
+    background-color: #234e52;
+    color: #81e6d9;
+  }
+}
+
+/* 标签 */
+.promptmaster-result-tag {
+  background-color: #f0f4f8;
+  color: #4a5568;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-result-tag {
+    background-color: #4a5568;
+    color: #cbd5e0;
+  }
+}
+
+/* 加载状态 */
+.promptmaster-loading {
+  padding: 20px;
+  text-align: center;
+  color: #718096;
+  font-size: 13px;
+}
+
+.promptmaster-loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top: 2px solid #3182ce;
+  border-radius: 50%;
+  animation: promptmaster-spin 1s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes promptmaster-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.promptmaster-empty {
+  padding: 20px;
+  text-align: center;
+  color: #a0aec0;
+  font-size: 13px;
+}
+
+/* 键盘提示 */
+.promptmaster-keyboard-hint {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 10px;
+  color: #a0aec0;
+  background-color: #f7fafc;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-keyboard-hint {
+    color: #718096;
+    background-color: #4a5568;
+    border-color: #718096;
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .promptmaster-selector {
+    max-width: calc(100vw - 20px);
+    left: 10px !important;
+    right: 10px;
+  }
+  
+  .promptmaster-result-item {
+    padding: 10px 12px;
+  }
+  
+  .promptmaster-result-title {
+    font-size: 13px;
+  }
+  
+  .promptmaster-result-alias {
+    font-size: 11px;
+  }
+}
+
+/* 动画效果 */
+.promptmaster-selector {
+  animation: promptmaster-fadeIn 0.15s ease-out;
+}
+
+@keyframes promptmaster-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  .promptmaster-selector {
+    border-width: 2px;
+    border-color: #000000;
+  }
+  
+  .promptmaster-result-item.selected {
+    border-left-width: 4px;
+  }
+  
+  .promptmaster-result-title {
+    font-weight: 700;
+  }
+}
+
+/* 减少动画模式支持 */
+@media (prefers-reduced-motion: reduce) {
+  .promptmaster-selector {
+    animation: none;
+  }
+  
+  .promptmaster-result-item {
+    transition: none;
+  }
+  
+  .promptmaster-loading::after {
+    animation: none;
+  }
+}
+
+/* 焦点可见性 */
+.promptmaster-result-item:focus-visible {
+  outline: 2px solid #3182ce;
+  outline-offset: -2px;
+}
+
+/* 选择器头部（如果需要） */
+.promptmaster-selector-header {
+  padding: 8px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f7fafc;
+  font-size: 12px;
+  color: #718096;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-selector-header {
+    border-bottom-color: #4a5568;
+    background-color: #4a5568;
+    color: #a0aec0;
+  }
+}
+
+/* 选择器底部（如果需要） */
+.promptmaster-selector-footer {
+  padding: 6px 16px;
+  border-top: 1px solid #e2e8f0;
+  background-color: #f7fafc;
+  font-size: 11px;
+  color: #a0aec0;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .promptmaster-selector-footer {
+    border-top-color: #4a5568;
+    background-color: #4a5568;
+    color: #718096;
+  }
+}
+
+/* 确保不与页面样式冲突 */
+.promptmaster-selector,
+.promptmaster-selector * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.promptmaster-selector {
+  all: initial;
+  position: absolute;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 防止页面样式影响 */
+.promptmaster-selector * {
+  all: unset;
+  display: revert;
+  box-sizing: border-box;
+}

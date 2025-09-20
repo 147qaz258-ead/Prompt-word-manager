@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PromptMaster 设置</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 16px;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      color: #4a5568;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.2s;
+      background: #f7fafc;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-input[type="password"] {
+      font-family: monospace;
+    }
+    
+    .form-input[type="number"] {
+      text-align: center;
+    }
+    
+    .form-input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .form-help {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .form-help a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .form-help a:hover {
+      text-decoration: underline;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e0;
+    }
+
+    .btn-test {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-test:hover {
+      background: #38a169;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #feb2b2;
+    }
+
+    .status.info {
+      background: #ebf8ff;
+      color: #2a4365;
+      border: 1px solid #90cdf4;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .connection-status.connected {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .connection-status.disconnected {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #feb2b2;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.connected {
+      background: #48bb78;
+    }
+
+    .status-dot.disconnected {
+      background: #f56565;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e2e8f0;
+      border-top: 2px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .guide {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .guide h3 {
+      color: #2d3748;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .guide ol {
+      margin-left: 20px;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+
+    .guide li {
+      margin-bottom: 8px;
+    }
+
+    .guide code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>PromptMaster 设置</h1>
+      <p>配置飞书 API 连接以获取提示词数据</p>
+    </div>
+
+    <div class="content">
+      <!-- 连接状态 -->
+      <div id="connectionStatus" class="connection-status disconnected">
+        <div class="status-dot disconnected"></div>
+        <span>未连接到飞书</span>
+      </div>
+
+      <!-- 配置指南 -->
+      <div class="guide">
+        <h3>🚀 快速配置指南</h3>
+        <ol>
+          <li>访问 <a href="https://open.feishu.cn/app" target="_blank">飞书开放平台</a> 创建应用</li>
+          <li>在应用管理页面获取 <code>App ID</code> 和 <code>App Secret</code></li>
+          <li>创建多维表格并获取 <code>App Token</code> 和 <code>Table ID</code></li>
+          <li>确保应用有访问多维表格的权限</li>
+          <li>填写下方配置信息并点击测试连接</li>
+        </ol>
+      </div>
+
+      <!-- 飞书配置 -->
+      <div class="section">
+        <h2 class="section-title">飞书 API 配置</h2>
+        
+        <div class="form-group">
+          <label class="form-label" for="appId">App ID *</label>
+          <input type="text" id="appId" class="form-input" placeholder="cli_xxxxxxxxxx">
+          <div class="form-help">在飞书开放平台应用管理页面获取</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="appSecret">App Secret *</label>
+          <input type="password" id="appSecret" class="form-input" placeholder="输入应用密钥">
+          <div class="form-help">应用密钥，请妥善保管</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bitableAppToken">多维表格 App Token *</label>
+          <input type="text" id="bitableAppToken" class="form-input" placeholder="bascnxxxxxxxxxx">
+          <div class="form-help">多维表格的应用令牌，在表格 URL 中可以找到</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bitableTableId">数据表 ID *</label>
+          <input type="text" id="bitableTableId" class="form-input" placeholder="tblxxxxxxxxxx">
+          <div class="form-help">具体数据表的 ID，在表格 URL 中可以找到</div>
+        </div>
+      </div>
+
+      <!-- 其他设置 -->
+      <div class="section">
+        <h2 class="section-title">插件设置</h2>
+        
+        <div class="form-group">
+          <label class="form-label" for="triggerChar">触发字符</label>
+          <input type="text" id="triggerChar" class="form-input" placeholder="/" maxlength="1">
+          <div class="form-help">在输入框中输入此字符来触发提示词搜索</div>
+        </div>
+
+        <div class="form-group">
+          <label for="maxRecentItems">最近使用数量</label>
+          <input type="number" id="maxRecentItems" class="form-input" min="5" max="50" value="10">
+          <small class="form-help">保存最近使用的提示词数量</small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">自动刷新提示词</label>
+          <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <input type="checkbox" id="autoRefreshEnabled" style="margin-right: 8px;">
+            <label for="autoRefreshEnabled">启用自动刷新</label>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <label for="autoRefreshInterval" style="margin-right: 10px;">刷新间隔：</label>
+            <input type="number" id="autoRefreshInterval" class="form-input" min="5" max="1440" value="30" style="width: 100px;">
+            <span style="margin-left: 10px;">分钟</span>
+          </div>
+          <small class="form-help">自动从飞书多维表格刷新提示词数据，建议间隔不小于30分钟</small>
+        </div>
+      </div>
+      
+      <!-- 数据管理区域 -->
+      <div class="section">
+        <h2 class="section-title">数据管理</h2>
+        <div class="form-group">
+          <label class="form-label">永久存储数据</label>
+          <div id="permanentDataInfo" class="data-status">
+            <span class="status-text">检查中...</span>
+          </div>
+          <div class="form-help">插件会永久保存从飞书获取的提示词数据，即使离线也能使用</div>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="button-group">
+        <button id="testConnection" class="btn btn-test">
+          <span id="testText">测试连接</span>
+          <div id="testLoading" class="loading" style="display: none;"></div>
+        </button>
+        <button id="refreshData" class="btn btn-primary">刷新数据</button>
+        <button id="clearPermanentData" class="btn btn-secondary">清除永久数据</button>
+        <button id="saveSettings" class="btn btn-primary">保存设置</button>
+        <button id="resetSettings" class="btn btn-secondary">重置</button>
+      </div>
+
+      <!-- 状态提示 -->
+      <div id="statusMessage" class="status"></div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

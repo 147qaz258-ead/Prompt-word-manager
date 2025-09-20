@@ -1,0 +1,22 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient16" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆角矩形 -->
+  <rect x="1" y="1" width="14" height="14" rx="3" ry="3" fill="url(#gradient16)" stroke="none"/>
+  
+  <!-- 主图标 - 简化的提示符号 -->
+  <g fill="white">
+    <!-- 对话气泡 -->
+    <path d="M3 4.5C3 3.67 3.67 3 4.5 3h7C12.33 3 13 3.67 13 4.5v4C13 9.33 12.33 10 11.5 10H7l-2 1.5V10H4.5C3.67 10 3 9.33 3 8.5v-4z" fill="white" opacity="0.9"/>
+    
+    <!-- 提示点 -->
+    <circle cx="6" cy="6.5" r="0.5" fill="url(#gradient16)"/>
+    <circle cx="8" cy="6.5" r="0.5" fill="url(#gradient16)"/>
+    <circle cx="10" cy="6.5" r="0.5" fill="url(#gradient16)"/>
+  </g>
+</svg>
