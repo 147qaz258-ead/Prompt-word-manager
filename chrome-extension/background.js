@@ -94,11 +94,27 @@ class FeishuService {
    */
   async initConfig() {
     if (!this.config) {
-      const result = await chrome.storage.sync.get([CONFIG.STORAGE_KEYS.FEISHU_CONFIG]);
-      this.config = result[CONFIG.STORAGE_KEYS.FEISHU_CONFIG];
-      
-      if (!this.config) {
-        throw new Error('飞书配置未设置，请在选项页面配置');
+      // 获取用户配置和配置模式
+      const result = await chrome.storage.sync.get([CONFIG.STORAGE_KEYS.FEISHU_CONFIG, 'promptmaster_config_mode']);
+      const userConfig = result[CONFIG.STORAGE_KEYS.FEISHU_CONFIG];
+      const configMode = result.promptmaster_config_mode || 'benefit'; // 'benefit' 或 'custom'
+
+      if (configMode === 'custom' && userConfig && (userConfig.appId || userConfig.bitableAppToken)) {
+        // 用户自定义配置模式（使用用户自己的飞书应用配置）
+        this.config = {
+          ...userConfig // 用户提供的完整飞书应用配置
+        };
+        console.log('🔧 使用用户自定义飞书应用配置');
+      } else {
+        // 福利配置模式（默认）
+        this.config = {
+          appId: 'cli_a84466381e74100b', // 您的飞书应用ID
+          appSecret: 'ocqzZ4FLobQd5piurZLkbg3T5R2k05R2', // 您的飞书应用密钥
+          bitableAppToken: 'V2YYbOqo4aSq6RsEpxlcYqvanXc', // 您的多维表格应用Token
+          bitableTableId: 'tblaxnEdrJMpnJD9', // 您的数据表ID
+          ...userConfig // 允许用户配置覆盖默认配置
+        };
+        console.log('🎁 使用福利飞书配置，为用户提供优质提示词库');
       }
     }
     return this.config;
@@ -773,11 +789,16 @@ async function refreshPrompts() {
 // 检查飞书配置
 async function checkFeishuConfig() {
   try {
+    // 创建服务实例检查内置配置
+    const feishuService = new FeishuService();
+    const config = await feishuService.initConfig();
+
+    // 检查是否有用户自定义配置
     const result = await chrome.storage.sync.get([CONFIG.STORAGE_KEYS.FEISHU_CONFIG]);
-    const config = result[CONFIG.STORAGE_KEYS.FEISHU_CONFIG];
-    
+    const userConfig = result[CONFIG.STORAGE_KEYS.FEISHU_CONFIG];
+
     const isValid = config && config.appId && config.appSecret && config.bitableAppToken && config.bitableTableId;
-    console.log('飞书配置检查:', { config, isValid });
+    console.log('🎁 福利飞书配置检查:', { isValid, hasUserConfig: !!userConfig });
     return isValid;
   } catch (error) {
     console.error('检查飞书配置失败:', error);

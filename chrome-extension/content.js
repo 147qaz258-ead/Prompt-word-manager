@@ -6,18 +6,18 @@ const CONFIG = {
   // 触发字符配置
   TRIGGER_CHARS: ['/', '@'],
   TRIGGER_SEQUENCES: ['//', '@@'],
-  
+
   // 搜索配置
   MIN_SEARCH_LENGTH: 1,
   SEARCH_DEBOUNCE_DELAY: 200,
   MAX_RESULTS: 10,
-  
+
   // 选择器配置
   SELECTOR_ID: 'prompt-manager-selector',
   SELECTOR_CLASS: 'promptmaster-selector',
   RESULT_ITEM_CLASS: 'promptmaster-result-item',
   SELECTED_CLASS: 'selected',
-  
+
   // 键盘导航
   KEYS: {
     ESCAPE: 'Escape',
@@ -26,10 +26,61 @@ const CONFIG = {
     ARROW_DOWN: 'ArrowDown',
     TAB: 'Tab'
   },
-  
+
   // 定位配置
   SELECTOR_OFFSET: { x: 0, y: 5 },
-  VIEWPORT_MARGIN: 20
+  VIEWPORT_MARGIN: 20,
+
+  // 剪贴板监听配置
+  CLIPBOARD: {
+    MIN_PROMPT_LENGTH: 10,
+    MAX_PROMPT_LENGTH: 5000,
+    CHECK_INTERVAL: 3000, // 从1秒改为3秒，减少检测频率
+    PROMPT_PATTERNS: [
+      /你是一个/i,
+      /请扮演一个/i,
+      /请帮我/i,
+      /我需要你/i,
+      /请你作为/i,
+      /假设你是/i,
+      /请以.*的身份/i,
+      /你将扮演/i,
+      /请按照/i,
+      /请用.*的方式/i,
+      /请基于/i,
+      /请根据/i,
+      /请分析/i,
+      /请总结/i,
+      /请解释/i,
+      /请翻译/i,
+      /请写作/i,
+      /请创建/i,
+      /请设计/i,
+      /请优化/i,
+      /请改进/i,
+      /请评估/i,
+      /请比较/i,
+      /请分类/i,
+      /请整理/i,
+      /请提取/i,
+      /请生成/i,
+      /请提供/i,
+      /请给出/i,
+      /请列出/i,
+      /请描述/i,
+      /请说明/i,
+      /请演示/i,
+      /请展示/i,
+      /请计算/i,
+      /请预测/i,
+      /请推荐/i,
+      /请建议/i,
+      /请指导/i,
+      /请帮助/i,
+      /请协助/i,
+      /请支持/i
+    ]
+  }
 };
 
 // ==================== 状态管理 ====================
@@ -42,7 +93,15 @@ let state = {
   selectedIndex: -1,
   selector: null,
   searchTimeout: null,
-  lastTriggerChar: null
+  lastTriggerChar: null,
+  clipboard: {
+    lastContent: '',
+    lastCheckTime: 0,
+    checkInterval: null,
+    isAutoCaptureEnabled: true,
+    isProcessing: false, // 防止重复处理
+    processedContent: new Set() // 记录已处理的内容
+  }
 };
 
 // ==================== 工具函数 ====================
@@ -218,13 +277,13 @@ async function performSearch(query) {
     
     // 发送搜索请求到background script
     const response = await chrome.runtime.sendMessage({
-      type: 'SEARCH_PROMPTS',
-      query: query,
-      limit: CONFIG.MAX_RESULTS
+      action: 'searchPrompts',
+      keyword: query,
+      params: { pageSize: CONFIG.MAX_RESULTS }
     });
     
     if (response && response.success) {
-      state.results = response.data || [];
+      state.results = response.data?.items || [];
       state.selectedIndex = state.results.length > 0 ? 0 : -1;
     } else {
       state.results = [];
@@ -631,13 +690,370 @@ function insertPrompt(prompt) {
  */
 async function recordPromptUsage(promptId) {
   try {
-    await chrome.runtime.sendMessage({
-      type: 'RECORD_USAGE',
-      promptId: promptId
-    });
+    // 目前暂时不实现使用记录功能
+    console.log('记录提示词使用:', promptId);
   } catch (error) {
     console.warn('记录使用失败:', error);
   }
+}
+
+// ==================== 剪贴板监听功能 ====================
+
+/**
+ * 启动剪贴板监听
+ */
+function startClipboardMonitoring() {
+  if (state.clipboard.checkInterval) {
+    clearInterval(state.clipboard.checkInterval);
+  }
+
+  console.log('📋 启动剪贴板监听');
+
+  // 立即执行一次检查
+  checkClipboardContent();
+
+  // 设置定时检查
+  state.clipboard.checkInterval = setInterval(checkClipboardContent, CONFIG.CLIPBOARD.CHECK_INTERVAL);
+}
+
+/**
+ * 停止剪贴板监听
+ */
+function stopClipboardMonitoring() {
+  if (state.clipboard.checkInterval) {
+    clearInterval(state.clipboard.checkInterval);
+    state.clipboard.checkInterval = null;
+    console.log('📋 停止剪贴板监听');
+  }
+}
+
+/**
+ * 检查剪贴板内容
+ */
+async function checkClipboardContent() {
+  if (!state.clipboard.isAutoCaptureEnabled || state.clipboard.isProcessing) return;
+
+  // 防止过于频繁的检查
+  const now = Date.now();
+  if (now - state.clipboard.lastCheckTime < CONFIG.CLIPBOARD.CHECK_INTERVAL) {
+    return;
+  }
+
+  state.clipboard.lastCheckTime = now;
+  state.clipboard.isProcessing = true;
+
+  try {
+    // 尝试读取剪贴板内容
+    const clipboardItems = await navigator.clipboard.read();
+
+    for (const item of clipboardItems) {
+      const textTypes = item.types.filter(type => type.startsWith('text/'));
+
+      for (const type of textTypes) {
+        const blob = await item.getType(type);
+        const text = await blob.text();
+
+        // 检查是否是新的提示词内容
+        if (text && text !== state.clipboard.lastContent) {
+          console.log('📋 检测到新的剪贴板内容，长度:', text.length);
+
+          // 生成内容哈希，避免重复处理
+          const contentHash = await generateContentHash(text);
+
+          // 检查是否已经处理过这个内容
+          if (!state.clipboard.processedContent.has(contentHash)) {
+            state.clipboard.processedContent.add(contentHash);
+
+            // 检查是否是提示词
+            if (isPromptContent(text)) {
+              console.log('🤖 检测到提示词内容');
+              await showAutoCaptureDialog(text);
+            }
+
+            // 清理旧的处理记录（保持最近50个）
+            if (state.clipboard.processedContent.size > 50) {
+              const oldestHash = state.clipboard.processedContent.values().next().value;
+              state.clipboard.processedContent.delete(oldestHash);
+            }
+          }
+
+          // 更新最后记录的内容
+          state.clipboard.lastContent = text;
+        }
+      }
+    }
+  } catch (error) {
+    // 静默处理权限错误或其他问题
+    console.debug('剪贴板读取失败:', error);
+  } finally {
+    state.clipboard.isProcessing = false;
+  }
+}
+
+/**
+ * 生成内容哈希
+ */
+async function generateContentHash(text) {
+  // 简单的哈希算法，用于去重
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+  return hash.toString();
+}
+
+/**
+ * 判断是否是提示词内容
+ */
+function isPromptContent(text) {
+  // 长度检查
+  if (text.length < CONFIG.CLIPBOARD.MIN_PROMPT_LENGTH ||
+      text.length > CONFIG.CLIPBOARD.MAX_PROMPT_LENGTH) {
+    return false;
+  }
+
+  // 检查是否包含提示词特征
+  const textLower = text.toLowerCase();
+
+  // 检查是否匹配提示词模式
+  for (const pattern of CONFIG.CLIPBOARD.PROMPT_PATTERNS) {
+    if (pattern.test(text)) {
+      console.log('🔍 匹配到提示词模式:', pattern);
+      return true;
+    }
+  }
+
+  // 检查是否包含关键词
+  const keywords = ['ai', 'assistant', '助手', '智能', '分析', '总结', '解释', '翻译', '写作', '创建', '设计'];
+  const hasKeyword = keywords.some(keyword => textLower.includes(keyword.toLowerCase()));
+
+  // 检查是否是完整的句子结构
+  const hasCompleteStructure = /[。！？.!?]/.test(text) && text.length > 20;
+
+  return hasKeyword && hasCompleteStructure;
+}
+
+/**
+ * 显示自动捕获对话框
+ */
+async function showAutoCaptureDialog(promptText) {
+  // 检查是否已经有对话框在显示
+  const existingDialog = document.getElementById('prompt-auto-capture-dialog');
+  if (existingDialog) {
+    return; // 如果已有对话框，直接返回，不重复显示
+  }
+
+  // 创建对话框
+  const dialog = document.createElement('div');
+  dialog.id = 'prompt-auto-capture-dialog';
+  dialog.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    z-index: 99999;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 350px;
+    animation: slideIn 0.3s ease-out;
+  `;
+
+  // 添加动画样式
+  if (!document.getElementById('prompt-auto-capture-styles')) {
+    const style = document.createElement('style');
+    style.id = 'prompt-auto-capture-styles';
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  dialog.innerHTML = `
+    <div style="margin-bottom: 15px;">
+      <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <span style="font-size: 24px; margin-right: 10px;">🤖</span>
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">检测到提示词</h3>
+      </div>
+      <p style="margin: 0; font-size: 13px; opacity: 0.9;">发现可能是AI提示词的内容，是否保存？</p>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+      <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">内容预览：</div>
+      <div style="font-size: 13px; max-height: 100px; overflow: hidden; text-overflow: ellipsis; white-space: pre-wrap;">
+        ${promptText.substring(0, 150)}${promptText.length > 150 ? '...' : ''}
+      </div>
+      <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">长度: ${promptText.length} 字符</div>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button id="auto-capture-save" style="flex: 1; padding: 8px 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+        💾 保存提示词
+      </button>
+      <button id="auto-capture-edit" style="flex: 1; padding: 8px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: white; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+        ✏️ 编辑保存
+      </button>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <button id="auto-capture-dismiss" style="padding: 6px 12px; background: transparent; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 11px; text-decoration: underline;">
+        忽略
+      </button>
+      <button id="auto-capture-disable" style="padding: 6px 12px; background: transparent; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 11px; text-decoration: underline;">
+        停止检测
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  // 绑定事件
+  const saveBtn = dialog.querySelector('#auto-capture-save');
+  const editBtn = dialog.querySelector('#auto-capture-edit');
+  const dismissBtn = dialog.querySelector('#auto-capture-dismiss');
+  const disableBtn = dialog.querySelector('#auto-capture-disable');
+
+  // 保存按钮
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.textContent = '保存中...';
+    saveBtn.disabled = true;
+
+    try {
+      await autoSavePrompt(promptText);
+      dialog.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => dialog.remove(), 300);
+    } catch (error) {
+      console.error('自动保存失败:', error);
+      saveBtn.textContent = '保存失败';
+      setTimeout(() => {
+        saveBtn.textContent = '💾 保存提示词';
+        saveBtn.disabled = false;
+      }, 2000);
+    }
+  });
+
+  // 编辑按钮
+  editBtn.addEventListener('click', () => {
+    dialog.remove();
+    showCaptureDialog(promptText);
+  });
+
+  // 忽略按钮
+  dismissBtn.addEventListener('click', () => {
+    dialog.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => dialog.remove(), 300);
+  });
+
+  // 停止检测按钮
+  disableBtn.addEventListener('click', () => {
+    state.clipboard.isAutoCaptureEnabled = false;
+    stopClipboardMonitoring();
+    dialog.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => dialog.remove(), 300);
+
+    // 显示已停止提示
+    showNotification('已停止自动检测提示词');
+  });
+
+  // 自动关闭
+  setTimeout(() => {
+    const currentDialog = document.getElementById('prompt-auto-capture-dialog');
+    if (currentDialog === dialog) {
+      dialog.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        if (dialog.parentNode) {
+          dialog.remove();
+        }
+      }, 300);
+    }
+  }, 10000); // 10秒后自动关闭
+}
+
+/**
+ * 自动保存提示词
+ */
+async function autoSavePrompt(promptText) {
+  try {
+    // 提取标题（使用第一句话或前50个字符）
+    let title = '';
+    const firstSentence = promptText.match(/^[^.!?。！？]+[.!?。！？]/);
+    if (firstSentence) {
+      title = firstSentence[0].trim().substring(0, 50);
+    } else {
+      title = promptText.substring(0, 50);
+    }
+
+    // 准备提示词数据
+    const promptData = {
+      title: title + (promptText.length > 50 ? '...' : ''),
+      content: promptText,
+      description: `自动保存的提示词 (${new Date().toLocaleString()})`,
+      category: '自动收集',
+      tags: ['自动收集', '剪贴板'],
+      isPublic: false,
+      createdBy: '自动检测'
+    };
+
+    console.log('🤖 自动保存提示词:', promptData);
+
+    // 发送到background script
+    const response = await chrome.runtime.sendMessage({
+      action: 'createPrompt',
+      promptData
+    });
+
+    if (response.success) {
+      showNotification('✅ 提示词已自动保存', 'success');
+    } else {
+      throw new Error(response.error || '保存失败');
+    }
+  } catch (error) {
+    console.error('自动保存提示词失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 显示通知
+ */
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
+    max-width: 300px;
+  `;
+
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // ==================== 事件监听 ====================
@@ -1079,11 +1495,11 @@ function showCaptureStatus(statusDiv, message, type) {
 function initialize() {
   console.log('🚀 提示词管理器 Content Script 已加载');
   console.log('📍 当前页面:', window.location.href);
-  
+
   // 检测页面中的可编辑元素
   const editableElements = document.querySelectorAll('input, textarea, [contenteditable="true"], [role="textbox"]');
   console.log('🔍 检测到可编辑元素数量:', editableElements.length);
-  
+
   // 添加事件监听器
   document.addEventListener('input', handleInput, true);
   document.addEventListener('keydown', handleKeyDown, true);
@@ -1091,14 +1507,15 @@ function initialize() {
   document.addEventListener('click', handleClick, true);
   window.addEventListener('scroll', handleScroll, true);
   window.addEventListener('resize', handleResize, true);
-  
+
   // 注意：消息监听器已在上方定义，这里不需要重复添加
-  
+
   // 页面卸载时清理
   window.addEventListener('beforeunload', () => {
     hideSelector();
+    stopClipboardMonitoring();
   });
-  
+
   // 动态监听新添加的元素
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -1112,12 +1529,15 @@ function initialize() {
       });
     });
   });
-  
+
   observer.observe(document.body, {
     childList: true,
     subtree: true
   });
-  
+
+  // 启动剪贴板监听功能
+  startClipboardMonitoring();
+
   console.log('✅ 提示词管理器初始化完成');
 }
 

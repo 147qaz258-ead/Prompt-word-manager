@@ -9,7 +9,8 @@
     "storage",
     "contextMenus",
     "scripting",
-    "background"
+    "background",
+    "clipboardRead"
   ],
   "host_permissions": [
     "<all_urls>",

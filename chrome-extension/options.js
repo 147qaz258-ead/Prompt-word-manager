@@ -27,6 +27,11 @@ const DEFAULT_SETTINGS = {
 
 // DOM 元素
 const elements = {
+  // 配置模式选择
+  modeBenefit: document.getElementById('modeBenefit'),
+  modeCustom: document.getElementById('modeCustom'),
+  customConfigSection: document.getElementById('customConfigSection'),
+
   // 飞书配置
   appId: document.getElementById('appId'),
   appSecret: document.getElementById('appSecret'),
@@ -75,6 +80,15 @@ document.addEventListener('DOMContentLoaded', async () => {
  * 绑定事件监听器
  */
 function bindEvents() {
+  // 配置模式切换
+  if (elements.modeBenefit && elements.modeCustom) {
+    elements.modeBenefit.addEventListener('change', handleConfigModeChange);
+    elements.modeCustom.addEventListener('change', handleConfigModeChange);
+
+    // 初始化模式选择器UI
+    initializeModeSelectors();
+  }
+
   // 测试连接
   if (elements.testConnection) {
     elements.testConnection.addEventListener('click', handleTestConnection);
@@ -98,11 +112,79 @@ function bindEvents() {
   // 输入框变化时清除状态
   const inputs = [elements.appId, elements.appSecret, elements.bitableAppToken, elements.bitableTableId];
   inputs.forEach(input => {
-    input.addEventListener('input', () => {
-      hideStatus();
-      updateConnectionStatus(false, '配置已修改，请重新测试连接');
+    if (input) {
+      input.addEventListener('input', () => {
+        hideStatus();
+        updateConnectionStatus(false, '配置已修改，请重新测试连接');
+      });
+    }
+  });
+}
+
+/**
+ * 初始化模式选择器UI
+ */
+function initializeModeSelectors() {
+  const modeOptions = document.querySelectorAll('.mode-option');
+
+  modeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const mode = option.dataset.mode;
+      const radio = option.querySelector('input[type="radio"]');
+
+      if (radio) {
+        radio.checked = true;
+        handleConfigModeChange({ target: radio });
+      }
     });
   });
+
+  // 初始化当前选择的模式
+  const currentMode = elements.modeBenefit?.checked ? 'benefit' : 'custom';
+  updateConfigUI(currentMode);
+}
+
+/**
+ * 处理配置模式变化
+ */
+async function handleConfigModeChange(event) {
+  const mode = event.target.value;
+
+  // 更新UI
+  updateConfigUI(mode);
+
+  // 保存配置模式
+  try {
+    await chrome.storage.sync.set({ 'promptmaster_config_mode': mode });
+    console.log(`配置模式已切换为: ${mode}`);
+  } catch (error) {
+    console.error('保存配置模式失败:', error);
+  }
+}
+
+/**
+ * 更新配置UI
+ */
+function updateConfigUI(mode) {
+  const modeOptions = document.querySelectorAll('.mode-option');
+
+  // 更新模式选项的选中状态
+  modeOptions.forEach(option => {
+    if (option.dataset.mode === mode) {
+      option.classList.add('selected');
+    } else {
+      option.classList.remove('selected');
+    }
+  });
+
+  // 显示/隐藏自定义配置区域
+  if (elements.customConfigSection) {
+    if (mode === 'custom') {
+      elements.customConfigSection.style.display = 'block';
+    } else {
+      elements.customConfigSection.style.display = 'none';
+    }
+  }
 }
 
 /**
@@ -110,14 +192,36 @@ function bindEvents() {
  */
 async function loadSettings() {
   try {
+    // 加载配置模式
+    const modeResult = await chrome.storage.sync.get(['promptmaster_config_mode']);
+    const configMode = modeResult.promptmaster_config_mode || 'benefit';
+
+    // 设置配置模式UI
+    if (configMode === 'custom' && elements.modeCustom) {
+      elements.modeCustom.checked = true;
+    } else if (elements.modeBenefit) {
+      elements.modeBenefit.checked = true;
+    }
+
+    // 更新配置UI
+    updateConfigUI(configMode);
+
     // 加载飞书配置
     const feishuResult = await chrome.storage.sync.get([CONFIG.STORAGE_KEYS.FEISHU_CONFIG]);
     const feishuConfig = feishuResult[CONFIG.STORAGE_KEYS.FEISHU_CONFIG] || {};
-    
-    elements.appId.value = feishuConfig.appId || '';
-    elements.appSecret.value = feishuConfig.appSecret || '';
-    elements.bitableAppToken.value = feishuConfig.bitableAppToken || '';
-    elements.bitableTableId.value = feishuConfig.bitableTableId || '';
+
+    if (elements.appId) {
+      elements.appId.value = feishuConfig.appId || '';
+    }
+    if (elements.appSecret) {
+      elements.appSecret.value = feishuConfig.appSecret || '';
+    }
+    if (elements.bitableAppToken) {
+      elements.bitableAppToken.value = feishuConfig.bitableAppToken || '';
+    }
+    if (elements.bitableTableId) {
+      elements.bitableTableId.value = feishuConfig.bitableTableId || '';
+    }
     
     // 加载插件设置
     const settingsResult = await chrome.storage.sync.get([CONFIG.STORAGE_KEYS.SETTINGS]);
@@ -182,14 +286,25 @@ function updateConnectionStatus(connected, message) {
  */
 async function handleTestConnection() {
   console.log('开始测试连接...');
-  
-  const config = getFeishuConfig();
-  console.log('获取到配置:', config);
-  
-  // 验证配置
-  if (!validateFeishuConfig(config)) {
-    console.log('配置验证失败');
-    return;
+
+  // 获取当前配置模式
+  const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
+  console.log('当前配置模式:', currentMode);
+
+  let config;
+  if (currentMode === 'custom') {
+    config = getFeishuConfig();
+    console.log('获取到自定义配置:', config);
+
+    // 验证配置
+    if (!validateFeishuConfig(config)) {
+      console.log('自定义配置验证失败');
+      return;
+    }
+  } else {
+    // 福利模式不需要用户配置
+    config = {};
+    console.log('福利模式，使用内置配置');
   }
   
   // 显示加载状态
@@ -242,20 +357,24 @@ async function handleSaveSettings() {
   try {
     const feishuConfig = getFeishuConfig();
     const settings = getSettings();
-    
+
+    // 获取当前配置模式
+    const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
+
     // 验证配置
-    if (!validateFeishuConfig(feishuConfig)) {
+    if (currentMode === 'custom' && !validateFeishuConfig(feishuConfig)) {
       return;
     }
-    
+
     if (!validateSettings(settings)) {
       return;
     }
-    
+
     // 保存配置
     await chrome.storage.sync.set({
       [CONFIG.STORAGE_KEYS.FEISHU_CONFIG]: feishuConfig,
-      [CONFIG.STORAGE_KEYS.SETTINGS]: settings
+      [CONFIG.STORAGE_KEYS.SETTINGS]: settings,
+      'promptmaster_config_mode': currentMode
     });
     
     showStatus('success', '设置保存成功！');
@@ -288,16 +407,33 @@ async function handleResetSettings() {
   if (!confirm('确定要重置所有设置吗？此操作不可撤销。')) {
     return;
   }
-  
+
   try {
     // 清除存储的配置
-    await chrome.storage.sync.remove([CONFIG.STORAGE_KEYS.FEISHU_CONFIG, CONFIG.STORAGE_KEYS.SETTINGS]);
-    
+    await chrome.storage.sync.remove([CONFIG.STORAGE_KEYS.FEISHU_CONFIG, CONFIG.STORAGE_KEYS.SETTINGS, 'promptmaster_config_mode']);
+
+    // 重置为福利模式
+    if (elements.modeBenefit) {
+      elements.modeBenefit.checked = true;
+    }
+    if (elements.modeCustom) {
+      elements.modeCustom.checked = false;
+    }
+    updateConfigUI('benefit');
+
     // 重置表单
-    elements.appId.value = '';
-    elements.appSecret.value = '';
-    elements.bitableAppToken.value = '';
-    elements.bitableTableId.value = '';
+    if (elements.appId) {
+      elements.appId.value = '';
+    }
+    if (elements.appSecret) {
+      elements.appSecret.value = '';
+    }
+    if (elements.bitableAppToken) {
+      elements.bitableAppToken.value = '';
+    }
+    if (elements.bitableTableId) {
+      elements.bitableTableId.value = '';
+    }
     elements.triggerChar.value = DEFAULT_SETTINGS.triggerChar;
     elements.maxRecentItems.value = DEFAULT_SETTINGS.maxRecentItems;
     elements.autoRefreshEnabled.checked = DEFAULT_SETTINGS.autoRefresh.enabled;
@@ -319,10 +455,10 @@ async function handleResetSettings() {
  */
 function getFeishuConfig() {
   return {
-    appId: elements.appId.value.trim(),
-    appSecret: elements.appSecret.value.trim(),
-    bitableAppToken: elements.bitableAppToken.value.trim(),
-    bitableTableId: elements.bitableTableId.value.trim()
+    appId: elements.appId ? elements.appId.value.trim() : '',
+    appSecret: elements.appSecret ? elements.appSecret.value.trim() : '',
+    bitableAppToken: elements.bitableAppToken ? elements.bitableAppToken.value.trim() : '',
+    bitableTableId: elements.bitableTableId ? elements.bitableTableId.value.trim() : ''
   };
 }
 
@@ -346,33 +482,32 @@ function getSettings() {
  */
 function validateFeishuConfig(config) {
   const errors = [];
-  
+
   if (!config.appId) {
     errors.push('App ID 不能为空');
   } else if (!config.appId.startsWith('cli_')) {
     errors.push('App ID 格式不正确，应以 "cli_" 开头');
   }
-  
+
   if (!config.appSecret) {
     errors.push('App Secret 不能为空');
   }
-  
+
   if (!config.bitableAppToken) {
     errors.push('多维表格 App Token 不能为空');
   }
-  // 移除token格式限制，用户确认token正确性
-  
+
   if (!config.bitableTableId) {
     errors.push('数据表 ID 不能为空');
   } else if (!config.bitableTableId.startsWith('tbl')) {
     errors.push('数据表 ID 格式不正确，应以 "tbl" 开头');
   }
-  
+
   if (errors.length > 0) {
     showStatus('error', '配置验证失败:\n' + errors.join('\n'));
     return false;
   }
-  
+
   return true;
 }
 
