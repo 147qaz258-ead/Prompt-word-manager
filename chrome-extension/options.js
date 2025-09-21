@@ -32,6 +32,11 @@ const elements = {
   modeCustom: document.getElementById('modeCustom'),
   customConfigSection: document.getElementById('customConfigSection'),
 
+  // 配置指南
+  benefitModeGuide: document.getElementById('benefitModeGuide'),
+  customModeGuide: document.getElementById('customModeGuide'),
+  customTableConfig: document.getElementById('customTableConfig'),
+
   // 飞书配置
   appId: document.getElementById('appId'),
   appSecret: document.getElementById('appSecret'),
@@ -177,8 +182,18 @@ function updateConfigUI(mode) {
     }
   });
 
-  // 两种模式都需要显示配置区域，但可以调整提示信息
-  // 现在配置区域始终显示，因为两种模式都需要飞书应用配置
+  // 显示/隐藏相应的配置指南和表单字段
+  if (mode === 'benefit') {
+    // 福利模式：只显示应用配置，隐藏表格配置
+    if (elements.benefitModeGuide) elements.benefitModeGuide.style.display = 'block';
+    if (elements.customModeGuide) elements.customModeGuide.style.display = 'none';
+    if (elements.customTableConfig) elements.customTableConfig.style.display = 'none';
+  } else {
+    // 自定义模式：显示完整配置
+    if (elements.benefitModeGuide) elements.benefitModeGuide.style.display = 'none';
+    if (elements.customModeGuide) elements.customModeGuide.style.display = 'block';
+    if (elements.customTableConfig) elements.customTableConfig.style.display = 'block';
+  }
 }
 
 /**
@@ -349,7 +364,7 @@ async function handleSaveSettings() {
     // 获取当前配置模式
     const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
 
-    // 两种模式都需要验证飞书配置
+    // 验证配置（根据模式验证不同内容）
     if (!validateFeishuConfig(feishuConfig)) {
       return;
     }
@@ -358,9 +373,17 @@ async function handleSaveSettings() {
       return;
     }
 
+    // 根据模式调整要保存的配置
+    const configToSave = { ...feishuConfig };
+    if (currentMode === 'benefit') {
+      // 福利模式：清空表格配置，使用内置的
+      configToSave.bitableAppToken = '';
+      configToSave.bitableTableId = '';
+    }
+
     // 保存配置
     await chrome.storage.sync.set({
-      [CONFIG.STORAGE_KEYS.FEISHU_CONFIG]: feishuConfig,
+      [CONFIG.STORAGE_KEYS.FEISHU_CONFIG]: configToSave,
       [CONFIG.STORAGE_KEYS.SETTINGS]: settings,
       'promptmaster_config_mode': currentMode
     });
@@ -426,11 +449,11 @@ async function handleResetSettings() {
     elements.maxRecentItems.value = DEFAULT_SETTINGS.maxRecentItems;
     elements.autoRefreshEnabled.checked = DEFAULT_SETTINGS.autoRefresh.enabled;
     elements.autoRefreshInterval.value = DEFAULT_SETTINGS.autoRefresh.interval;
-    
+
     // 更新状态
     updateConnectionStatus(false, '未连接到飞书');
     showStatus('info', '设置已重置为默认值');
-    
+
     console.log('设置已重置');
   } catch (error) {
     console.error('重置设置失败:', error);
@@ -469,8 +492,10 @@ function getSettings() {
  * 验证飞书配置
  */
 function validateFeishuConfig(config) {
+  const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
   const errors = [];
 
+  // 所有模式都需要验证应用信息
   if (!config.appId) {
     errors.push('App ID 不能为空');
   } else if (!config.appId.startsWith('cli_')) {
@@ -481,14 +506,17 @@ function validateFeishuConfig(config) {
     errors.push('App Secret 不能为空');
   }
 
-  if (!config.bitableAppToken) {
-    errors.push('多维表格 App Token 不能为空');
-  }
+  // 自定义模式需要验证表格信息
+  if (currentMode === 'custom') {
+    if (!config.bitableAppToken) {
+      errors.push('多维表格 App Token 不能为空');
+    }
 
-  if (!config.bitableTableId) {
-    errors.push('数据表 ID 不能为空');
-  } else if (!config.bitableTableId.startsWith('tbl')) {
-    errors.push('数据表 ID 格式不正确，应以 "tbl" 开头');
+    if (!config.bitableTableId) {
+      errors.push('数据表 ID 不能为空');
+    } else if (!config.bitableTableId.startsWith('tbl')) {
+      errors.push('数据表 ID 格式不正确，应以 "tbl" 开头');
+    }
   }
 
   if (errors.length > 0) {

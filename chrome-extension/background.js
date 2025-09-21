@@ -106,16 +106,13 @@ class FeishuService {
         };
         console.log('🔧 使用用户自定义飞书应用配置');
       } else {
-        // 福利配置模式（默认）- 需要用户配置自己的飞书应用
-        // 注意：为了安全考虑，请将以下配置替换为您自己的飞书应用信息
+        // 福利配置模式（默认）- 内置精选提示词库表格
         this.config = {
-          appId: '', // 请配置您的飞书应用ID
-          appSecret: '', // 请配置您的飞书应用密钥
-          bitableAppToken: '', // 请配置您的多维表格应用Token
-          bitableTableId: '', // 请配置您的数据表ID
-          ...userConfig // 允许用户配置覆盖默认配置
+          bitableAppToken: 'V2YYbOqo4aSq6RsEpxlcYqvanXc', // 精选提示词库表格Token
+          bitableTableId: 'tblaxnEdrJMpnJD9', // 精选提示词库数据表ID
+          ...userConfig // 用户的飞书应用配置会覆盖这里的配置
         };
-        console.log('🎁 福利模式需要您配置飞书应用信息');
+        console.log('🎁 使用内置精选提示词库表格');
       }
     }
     return this.config;
