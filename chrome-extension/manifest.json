@@ -1,16 +1,17 @@
 {
   "manifest_version": 3,
   "name": "PromptMaster",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "专业的提示词管理工具，支持快捷指令和一键捕获功能",
-  
+
   "permissions": [
     "activeTab",
     "storage",
     "contextMenus",
     "scripting",
     "background",
-    "clipboardRead"
+    "clipboardRead",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>",
