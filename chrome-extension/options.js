@@ -177,14 +177,8 @@ function updateConfigUI(mode) {
     }
   });
 
-  // 显示/隐藏自定义配置区域
-  if (elements.customConfigSection) {
-    if (mode === 'custom') {
-      elements.customConfigSection.style.display = 'block';
-    } else {
-      elements.customConfigSection.style.display = 'none';
-    }
-  }
+  // 两种模式都需要显示配置区域，但可以调整提示信息
+  // 现在配置区域始终显示，因为两种模式都需要飞书应用配置
 }
 
 /**
@@ -291,20 +285,14 @@ async function handleTestConnection() {
   const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
   console.log('当前配置模式:', currentMode);
 
-  let config;
-  if (currentMode === 'custom') {
-    config = getFeishuConfig();
-    console.log('获取到自定义配置:', config);
+  // 两种模式都需要飞书配置
+  const config = getFeishuConfig();
+  console.log('获取到配置:', config);
 
-    // 验证配置
-    if (!validateFeishuConfig(config)) {
-      console.log('自定义配置验证失败');
-      return;
-    }
-  } else {
-    // 福利模式不需要用户配置
-    config = {};
-    console.log('福利模式，使用内置配置');
+  // 验证配置
+  if (!validateFeishuConfig(config)) {
+    console.log('配置验证失败');
+    return;
   }
   
   // 显示加载状态
@@ -361,8 +349,8 @@ async function handleSaveSettings() {
     // 获取当前配置模式
     const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
 
-    // 验证配置
-    if (currentMode === 'custom' && !validateFeishuConfig(feishuConfig)) {
+    // 两种模式都需要验证飞书配置
+    if (!validateFeishuConfig(feishuConfig)) {
       return;
     }
 
@@ -630,8 +618,11 @@ function updatePermanentDataStatus(hasData, count, lastUpdated) {
  * 处理刷新数据
  */
 async function handleRefreshData() {
+  // 获取当前配置模式
+  const currentMode = elements.modeCustom?.checked ? 'custom' : 'benefit';
+
   const config = getFeishuConfig();
-  
+
   // 验证配置
   if (!validateFeishuConfig(config)) {
     return;
